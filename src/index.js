@@ -1,5 +1,6 @@
 import { GraphQLServer } from 'graphql-yoga';
-const { v4: uuidv4 } = require('uuid');
+
+const {v4: uuidv4} = require('uuid');
 
 // Data
 const usrData = [
@@ -24,7 +25,8 @@ const usrData = [
 const cmtData = [
   {id: '1', text: 'NICE', author: '1', post: '3',},
   {id: '2', text: 'COOL', author: '3', post: '1',},
-  {id: '3', text: 'BAD', author: '1', post: '3',
+  {
+    id: '3', text: 'BAD', author: '1', post: '3',
   }, {id: '4', text: 'GREAT', author: '2', post: '2',}];
 const pstData = [
   {
@@ -58,9 +60,28 @@ const typeDefs = `
     }
     
     type Mutation {
-        createUser(name: String!, email: String!, age: Int!): User!
-        createPost(title: String!, body: String!, author: String!, published: Boolean!): Post!
-        createComment(text: String!, author: String!, post: String!): Comment!
+        createUser(data: CreateUserInput): User!
+        createPost(data: CreatePostInput): Post!
+        createComment(data: CreateCommentInput): Comment!
+    }
+    
+    input CreatePostInput {
+        title: String!
+        body: String!
+        author: String!
+        published: Boolean!
+    }
+    
+    input CreateUserInput {
+        name: String!
+        email: String!
+        age: Int!
+    }
+    
+    input CreateCommentInput {
+        text: String!
+        author: String!
+        post: String!
     }
 
     type User {
@@ -121,7 +142,7 @@ const resolvers = {
   },
   Mutation: {
     createUser(parent, args, ctx, info) {
-      const {age, name, email} = args;
+      const {age, name, email} = args.data;
       if (usrData.some(usr => usr.email === email)) {
         throw new Error('This email is already taken');
       }
@@ -132,12 +153,12 @@ const resolvers = {
       return user;
     },
     createPost(parent, args, ctx, info) {
-      const {title, body, author, published} = args;
+      const {title, body, author, published} = args.data;
       if (!usrData.some(usr => usr.id === author)) {
         throw new Error('This user does not exist');
       }
 
-      const post = {}
+      const post = {};
       post.id = uuidv4();
       Object.assign(post, {title, body, published, author});
 
@@ -145,7 +166,7 @@ const resolvers = {
       return post;
     },
     createComment(parent, args, ctx, info) {
-      const {text, author, post} = args
+      const {text, author, post} = args.data;
 
       //checks
       if (!usrData.some(usr => usr.id === author)) {
@@ -158,7 +179,7 @@ const resolvers = {
         throw new Error('This Post Is not published');
       }
 
-      const comment = {}
+      const comment = {};
       comment.id = uuidv4();
       Object.assign(comment, {text, author, post});
       cmtData.push(comment);
