@@ -46,6 +46,49 @@ const Mutation = {
     return comment;
   },
 
+  updateUser(parent, args, {db}, info) {
+    const {id, data: {age, name, email}} = args;
+    const user = db.usrData.find(usr => usr.id === args.id);
+    if (!user) {
+      throw new Error('User with specified it not found');
+    }
+    if(age) { user.age = age }
+    if(name) { user.name = name }
+    if(email) { user.email = email }
+
+    return user;
+  },
+
+  updatePost(parent, args, {db}, info){
+    const {id, data: {title, body, author, published}} = args;
+
+    const post = db.pstData.find(pst => pst.id === args.id);
+    if (!post) {
+      throw new Error('Post with specified it not found');
+    }
+
+    if(title) { post.title = title }
+    if(body) { post.body = body }
+    if(author) { post.author = author }
+    if(typeof published === 'boolean') { post.published = published }
+
+    return post;
+  },
+
+  updateComment(parent, args, { db }, info){
+    const {id, data: { text }} = args;
+
+    const comment = db.cmtData.find(cmt => cmt.id === id);
+    if (!comment) {
+      throw new Error('Comment with specified it not found');
+    }
+
+    if(text) { comment.text = text }
+
+    return comment;
+  },
+
+
   deleteUser(parent, args, {db}, info) {
     const usrIndex = db.usrData.findIndex(usr => usr.id === args.id);
     if (usrIndex === -1) {
@@ -70,7 +113,6 @@ const Mutation = {
 
     return user;
   },
-
   deletePost(parent, args, {db}, info) {
     const pstIndex = db.pstData.findIndex(pst => pst.id === args.id);
     if (pstIndex === -1) {
@@ -81,7 +123,6 @@ const Mutation = {
     db.pstData = db.pstData.filter(pst => pst.id !== args.id);
     return post;
   },
-
   deleteComment(parent, args, {db}, info) {
     const cmtIndex = db.cmtData.findIndex(pst => pst.id === args.id);
     if (cmtIndex === -1) {
