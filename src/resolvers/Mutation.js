@@ -12,7 +12,7 @@ const Mutation = {
 
     return user;
   },
-  createPost(parent, args, {db}, info) {
+  createPost(parent, args, {db, pubsub}, info) {
     const {title, body, author, published} = args.data;
     if (!db.usrData.some(usr => usr.id === author)) {
       throw new Error('This user does not exist');
@@ -23,9 +23,20 @@ const Mutation = {
     Object.assign(post, {title, body, published, author});
 
     db.pstData.push(post);
+
+    if (post.published) {
+      pubsub.publish(`post`, {
+        post: {
+          mutation: 'CREATED',
+          data: post,
+        }
+      });
+    }
+
     return post;
   },
-  createComment(parent, args, {db}, info) {
+
+  createComment(parent, args, {db, pubsub}, info) {
     const {text, author, post} = args.data;
 
     //checks
@@ -43,6 +54,14 @@ const Mutation = {
     comment.id = uuidv4();
     Object.assign(comment, {text, author, post});
     db.cmtData.push(comment);
+
+    pubsub.publish(`comment ${post}`, {
+      comment: {
+        data: comment,
+        mutation: 'CREATED',
+      }
+    });
+
     return comment;
   },
 
@@ -52,14 +71,20 @@ const Mutation = {
     if (!user) {
       throw new Error('User with specified it not found');
     }
-    if(age) { user.age = age }
-    if(name) { user.name = name }
-    if(email) { user.email = email }
+    if (age) {
+      user.age = age;
+    }
+    if (name) {
+      user.name = name;
+    }
+    if (email) {
+      user.email = email;
+    }
 
     return user;
   },
 
-  updatePost(parent, args, {db}, info){
+  updatePost(parent, args, {db, pubsub}, info) {
     const {id, data: {title, body, author, published}} = args;
 
     const post = db.pstData.find(pst => pst.id === args.id);
@@ -67,23 +92,49 @@ const Mutation = {
       throw new Error('Post with specified it not found');
     }
 
-    if(title) { post.title = title }
-    if(body) { post.body = body }
-    if(author) { post.author = author }
-    if(typeof published === 'boolean') { post.published = published }
+    if (title) {
+      post.title = title;
+    }
+    if (body) {
+      post.body = body;
+    }
+    if (author) {
+      post.author = author;
+    }
+    if (typeof published === 'boolean') {
+      post.published = published;
+    }
+
+    if (post.published) {
+      pubsub.publish(`post`, {
+        post: {
+          mutation: 'UDPATED',
+          data: post,
+        }
+      });
+    }
 
     return post;
   },
 
-  updateComment(parent, args, { db }, info){
-    const {id, data: { text }} = args;
+  updateComment(parent, args, {db, pubsub}, info) {
+    const {id, data: {text}} = args;
 
     const comment = db.cmtData.find(cmt => cmt.id === id);
     if (!comment) {
       throw new Error('Comment with specified it not found');
     }
 
-    if(text) { comment.text = text }
+    if (text) {
+      comment.text = text;
+    }
+
+    pubsub.publish(`comment ${comment.post}`, {
+      comment: {
+        data: comment,
+        mutation: 'UPDATED',
+      }
+    });
 
     return comment;
   },
@@ -113,7 +164,8 @@ const Mutation = {
 
     return user;
   },
-  deletePost(parent, args, {db}, info) {
+
+  deletePost(parent, args, {db, pubsub}, info) {
     const pstIndex = db.pstData.findIndex(pst => pst.id === args.id);
     if (pstIndex === -1) {
       throw  new Error('Post not found');
@@ -121,9 +173,20 @@ const Mutation = {
     const post = db.pstData[pstIndex];
     db.cmtData = db.cmtData.filter(cmt => cmt.post !== args.id);
     db.pstData = db.pstData.filter(pst => pst.id !== args.id);
+
+    if (post.published) {
+      pubsub.publish(`post`, {
+        post: {
+          mutation: 'DELETED',
+          data: post,
+        }
+      });
+    }
+
     return post;
   },
-  deleteComment(parent, args, {db}, info) {
+
+  deleteComment(parent, args, { db, pubsub }, info) {
     const cmtIndex = db.cmtData.findIndex(pst => pst.id === args.id);
     if (cmtIndex === -1) {
       throw  new Error('Comment not found');
@@ -131,6 +194,13 @@ const Mutation = {
     const comment = db.cmtData[cmtIndex];
 
     db.cmtData = db.cmtData.filter(cmt => cmt.id !== args.id);
+
+    pubsub.publish(`comment ${comment.post}`, {
+      comment: {
+        data: comment,
+        mutation: 'DELETED',
+      }
+    });
 
     return comment;
   }
